@@ -447,8 +447,8 @@ const STICKERS = ["🎀", "⭐", "🖤", "🍒", "💿", "🍬", "🌸", "⛓️
 /* ═══════════════ site logic — no need to edit below ═══════════════ */
 
 const store = {
-  get votes() { return JSON.parse(localStorage.getItem("ca_votes") || "{}"); },
-  set votes(v) { localStorage.setItem("ca_votes", JSON.stringify(v)); },
+  get votes() { return JSON.parse(localStorage.getItem("ca_votes_r2") || "{}"); },
+  set votes(v) { localStorage.setItem("ca_votes_r2", JSON.stringify(v)); },
   get unlocked() { return localStorage.getItem("ca_unlocked") === "yes"; },
   unlock() { localStorage.setItem("ca_unlocked", "yes"); }
 };
