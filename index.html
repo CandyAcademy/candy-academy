@@ -111,9 +111,16 @@
 
   /* ---------- trainee grid ---------- */
   .grid {
-    display: grid; gap: 26px; padding: 36px 20px 60px;
+    display: grid; gap: 26px; padding: 18px 20px 44px;
     max-width: 1000px; margin: 0 auto;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .group-title {
+    font-family: "Cherry Bomb One", sans-serif; font-weight: 400;
+    text-align: center; margin: 34px 20px 4px;
+    font-size: clamp(1.5rem, 5vw, 2.2rem); letter-spacing: .05em;
+    color: var(--pink);
+    text-shadow: 0 0 14px rgba(255, 61, 154, .55), 3px 3px 0 var(--hot);
   }
   .trainee {
     background: var(--card); border-radius: 20px; padding: 26px 22px 22px;
@@ -245,7 +252,7 @@
   <a class="dump-link" href="https://www.youtube.com/@JELLYXgirlgroup" target="_blank" rel="noopener">▶ JELLYX on YouTube</a>
 </header>
 
-<main class="grid" id="grid"></main>
+<main id="grid"></main>
 
 <div id="modal" onclick="if(event.target===this) closeModal()">
   <div class="modal-card">
@@ -433,6 +440,14 @@ const TRAINEES = [
   }
 ];
 
+/* Groups! Just move names around (must match the stage name exactly).
+   Anyone not listed here shows up under "no group yet". */
+const GROUPS = [
+  { title: "GROUP 1", members: ["ELLIE", "MIA", "MISAKI", "RINA"] },
+  { title: "GROUP 2", members: ["ANGELIKA", "YUKI", "AVA"] },
+  { title: "GROUP 3", members: ["FATIMA", "ZOE", "CHLOE"] },
+];
+
 const STICKERS = ["🎀", "⭐", "🖤", "🍒", "💿", "🍬", "🌸", "⛓️", "💋", "🧷"];
 
 /* ═══════════════ site logic — no need to edit below ═══════════════ */
@@ -530,7 +545,7 @@ function render() {
   const left = VOTES_PER_PERSON - votesUsed();
   document.getElementById("votesLeft").textContent = left;
 
-  document.getElementById("grid").innerHTML = TRAINEES.map((t, i) => {
+  const card = (t, i) => {
     const voted = !!votes[i];
     return `
     <div class="trainee">
@@ -553,7 +568,24 @@ function render() {
                  : voted ? "You're supporting " + t.name + "!" : "&nbsp;"
       }</div>
     </div>`;
-  }).join("");
+  };
+
+  const grouped = new Set(GROUPS.flatMap(g => g.members));
+  const sections = GROUPS.map(g => ({
+    title: g.title,
+    entries: g.members
+      .map(name => TRAINEES.findIndex(t => t.name === name))
+      .filter(i => i !== -1)
+  }));
+  const leftovers = TRAINEES.map((t, i) => i).filter(i => !grouped.has(TRAINEES[i].name));
+  if (leftovers.length) sections.push({ title: "no group yet", entries: leftovers });
+
+  document.getElementById("grid").innerHTML = sections
+    .filter(s => s.entries.length)
+    .map(s => `
+      <h2 class="group-title">⋆˙⟡ ${s.title} ⟡˙⋆</h2>
+      <div class="grid">${s.entries.map(i => card(TRAINEES[i], i)).join("")}</div>
+    `).join("");
 }
 
 render();
