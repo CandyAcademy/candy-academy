@@ -122,6 +122,16 @@
     color: var(--pink);
     text-shadow: 0 0 14px rgba(255, 61, 154, .55), 3px 3px 0 var(--hot);
   }
+  .group-vote { text-align: center; margin-top: 12px; }
+  .group-vote .btn-vote {
+    padding: 13px 34px; border-radius: 999px; font-family: inherit;
+    font-weight: 700; font-size: 1rem; cursor: pointer; transition: transform .12s;
+    background: var(--hot); color: var(--blk);
+    border: 2px solid var(--blk); box-shadow: 3px 3px 0 var(--pink);
+  }
+  .group-vote .btn-vote:hover { transform: translate(-2px, -2px); }
+  .group-vote .btn-vote.voted { background: var(--pink); box-shadow: 3px 3px 0 var(--hot); }
+  .group-vote .btn-vote:disabled { opacity: .4; cursor: not-allowed; transform: none; }
   .trainee {
     background: var(--card); border-radius: 20px; padding: 26px 22px 22px;
     border: 2px solid var(--edge);
@@ -240,12 +250,12 @@
 
 <div class="checker"></div>
 <div class="marquee"><div>
-  ✦ candy academy ✦ y2k 4ever ✦ pink &amp; black ✦ vote 4 ur bias ♡ ✦ debut era loading… ✦ candy academy ✦ y2k 4ever ✦ pink &amp; black ✦ vote 4 ur bias ♡ ✦ debut era loading… ✦&nbsp;
+  ✦ candy academy ✦ y2k 4ever ✦ pink &amp; black ✦ vote 4 ur fav group ♡ ✦ debut era loading… ✦ candy academy ✦ y2k 4ever ✦ pink &amp; black ✦ vote 4 ur fav group ♡ ✦ debut era loading… ✦&nbsp;
 </div></div>
 
 <header>
   <div class="logo">CANDY ACADEMY</div>
-  <div class="tagline">♡ which trainees will make the lineup? u decide ♡</div>
+  <div class="tagline">♡ which group will win? u decide ♡</div>
   <br>
   <div class="votes-left">🗳️ Votes left: <span id="votesLeft">3</span></div>
   <br>
@@ -277,7 +287,7 @@
 /* ═══════════════ CONFIG — edit this part! ═══════════════ */
 
 const PASSCODE = "sweetdebut";   // ← change me, then share with the group
-const VOTES_PER_PERSON = 3;
+const VOTES_PER_PERSON = 1;      // group voting: everyone picks ONE fav group
 
 /* The shared vote counter lives in your Firebase project (halo-app-b8929).
    Every visitor's votes add up here. To see the live totals, open the site
@@ -453,8 +463,8 @@ const STICKERS = ["🎀", "⭐", "🖤", "🍒", "💿", "🍬", "🌸", "⛓️
 /* ═══════════════ site logic — no need to edit below ═══════════════ */
 
 const store = {
-  get votes() { return JSON.parse(localStorage.getItem("ca_votes_r2") || "{}"); },
-  set votes(v) { localStorage.setItem("ca_votes_r2", JSON.stringify(v)); },
+  get votes() { return JSON.parse(localStorage.getItem("ca_votes_r3") || "{}"); },
+  set votes(v) { localStorage.setItem("ca_votes_r3", JSON.stringify(v)); },
   get unlocked() { return localStorage.getItem("ca_unlocked") === "yes"; },
   unlock() { localStorage.setItem("ca_unlocked", "yes"); }
 };
@@ -482,10 +492,10 @@ function votesUsed() {
 const CEO_MODE = location.hash.includes("ceo");
 let totals = {};
 
-function voteKey(t) { return t.name.toLowerCase().replace(/[^a-z0-9]/g, ""); }
+function groupKey(title) { return title.toLowerCase().replace(/[^a-z0-9]/g, ""); }
 
-function bumpVote(t, delta) {
-  fetch(`${DB_URL}/votes/${voteKey(t)}.json`, {
+function bumpVote(key, delta) {
+  fetch(`${DB_URL}/votes/${key}.json`, {
     method: "PUT",
     body: JSON.stringify({ ".sv": { "increment": delta } })
   }).catch(() => {});
@@ -499,14 +509,15 @@ async function loadTotals() {
   render();
 }
 
-function toggleVote(i) {
+function toggleGroupVote(gi) {
+  const key = groupKey(GROUPS[gi].title);
   const votes = store.votes;
-  if (votes[i]) {
-    delete votes[i];                       // un-vote
-    bumpVote(TRAINEES[i], -1);
+  if (votes[key]) {
+    delete votes[key];                     // un-vote
+    bumpVote(key, -1);
   } else if (votesUsed() < VOTES_PER_PERSON) {
-    votes[i] = 1;
-    bumpVote(TRAINEES[i], 1);
+    votes[key] = 1;
+    bumpVote(key, 1);
   }
   store.votes = votes;
   render();
@@ -545,9 +556,7 @@ function render() {
   const left = VOTES_PER_PERSON - votesUsed();
   document.getElementById("votesLeft").textContent = left;
 
-  const card = (t, i) => {
-    const voted = !!votes[i];
-    return `
+  const card = (t, i) => `
     <div class="trainee">
       <span class="sticker">${STICKERS[i % STICKERS.length]}</span>
       <div class="avatar" style="background:linear-gradient(145deg, ${t.colors[0]}, ${t.colors[1]})">${t.emoji}${t.photoUrl ? `<img src="${t.photoUrl}" alt="" onerror="this.remove()">` : ""}</div>
@@ -557,35 +566,43 @@ function render() {
       <div class="bio">${t.bio}</div>
       <div class="card-buttons">
         <button class="btn-video" onclick="openModal(${i})">✨ Intro</button>
-        <button class="btn-vote ${voted ? "voted" : ""}"
-                onclick="toggleVote(${i})"
-                ${!voted && left === 0 ? "disabled" : ""}>
-          ${voted ? "✔ Voted" : "🗳️ Vote"}
-        </button>
       </div>
-      <div class="vote-count">${
-        CEO_MODE ? `👑 ${totals[voteKey(t)] || 0} total vote${(totals[voteKey(t)] || 0) === 1 ? "" : "s"}`
-                 : voted ? "You're supporting " + t.name + "!" : "&nbsp;"
-      }</div>
     </div>`;
-  };
 
   const grouped = new Set(GROUPS.flatMap(g => g.members));
-  const sections = GROUPS.map(g => ({
+  const sections = GROUPS.map((g, gi) => ({
     title: g.title,
+    gi,
+    votable: true,
     entries: g.members
       .map(name => TRAINEES.findIndex(t => t.name === name))
       .filter(i => i !== -1)
   }));
   const leftovers = TRAINEES.map((t, i) => i).filter(i => !grouped.has(TRAINEES[i].name));
-  if (leftovers.length) sections.push({ title: "no group yet", entries: leftovers });
+  if (leftovers.length) sections.push({ title: "no group yet", votable: false, entries: leftovers });
 
   document.getElementById("grid").innerHTML = sections
     .filter(s => s.entries.length)
-    .map(s => `
+    .map(s => {
+      const key = s.votable ? groupKey(s.title) : "";
+      const voted = s.votable && !!votes[key];
+      const n = totals[key] || 0;
+      return `
       <h2 class="group-title">⋆˙⟡ ${s.title} ⟡˙⋆</h2>
+      ${s.votable ? `
+      <div class="group-vote">
+        <button class="btn-vote ${voted ? "voted" : ""}"
+                onclick="toggleGroupVote(${s.gi})"
+                ${!voted && left === 0 ? "disabled" : ""}>
+          ${voted ? "✔ Voted" : "🗳️ Vote for this group"}
+        </button>
+        <div class="vote-count">${
+          CEO_MODE ? `👑 ${n} total vote${n === 1 ? "" : "s"}`
+                   : voted ? `You're supporting ${s.title}! 💗` : "&nbsp;"
+        }</div>
+      </div>` : ""}
       <div class="grid">${s.entries.map(i => card(TRAINEES[i], i)).join("")}</div>
-    `).join("");
+    `}).join("");
 }
 
 render();
